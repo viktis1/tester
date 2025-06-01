@@ -1,0 +1,57 @@
+import os
+
+from invoke import task # type: ignore (this works but is flagged as error...)
+
+WINDOWS = os.name == "nt"
+REPO_NAME = "tester"
+PYTHON_VERSION = "3.12"
+
+# Setup commands
+@task
+def create_environment(ctx):
+    """Create a new conda environment for repo and install up-to-date invoke."""
+    ctx.run(
+        f"conda create --name {REPO_NAME} python={PYTHON_VERSION} pip --no-default-packages --yes",
+        echo=True,
+        pty=not WINDOWS,
+    )
+
+    ctx.run(
+        f"conda run -n {REPO_NAME} pip install invoke setuptools wheel",
+        echo=True,
+        pty=not WINDOWS,
+    )
+    print(
+        f"To activate it, run: conda activate {REPO_NAME}\n"
+    )
+
+@task
+def requirements(ctx) -> None:
+    """Install project requirements. You must install PyTorch manually depending on your system."""
+    print(
+        "\nPyTorch is not installed automatically.\n"
+        "Please visit: https://pytorch.org/get-started/locally/ to choose the correct version.\n"
+        "Then paste the install command below (or press Enter to skip):\n"
+    )
+
+    user_cmd = input(">>> ")
+    if user_cmd.strip():
+        ctx.run(user_cmd, echo=True, pty=not WINDOWS)
+    else:
+        print("Skipping PyTorch install. Be sure to install it manually before using GPU features.")
+
+
+    # ctx.run("python -m pip install -U pip setuptools wheel", echo=True, pty=not WINDOWS)
+    ctx.run("python -m pip install -e .", echo=True, pty=not WINDOWS)
+
+
+
+@task
+def docker_build(ctx, progress: str = "plain") -> None:
+    """Build docker images."""
+    ctx.run(
+        f"docker build -t train:latest . -f dockerfiles/train.dockerfile --progress={progress}",
+        echo=True,
+        pty=not WINDOWS
+    )
+
